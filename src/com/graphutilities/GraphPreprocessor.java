@@ -1,9 +1,9 @@
 package com.graphutilities;
 
-import sun.security.provider.certpath.Vertex;
+
+import com.sun.xml.internal.bind.v2.model.core.ID;
 
 import java.io.*;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.*;
@@ -11,8 +11,8 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class GraphPreprocessor {
 
-    private Object[] graph;
-    private Object[] graphTranspose;
+    private int[][] graph;
+    private int[][] graphTranspose;
 
     private static final String GRAPH_ROOT_PATH = "graphs";
     private static final String OUTPUT_PATH = "output_graphs";
@@ -34,51 +34,79 @@ public class GraphPreprocessor {
 
 
         String outputPath = String.format(baseProjectPath + File.separator + OUTPUT_PATH);
+//        assertTransposeIsCorrect(this.graph, this.graphTranspose);
 
 //        writeToFile(outputPath, fileName);
         doGraphOperations();
 
     }
 
+    private void assertTransposeIsCorrect(int[][] graph, int[][] graphTranspose) {
+        int step = 0;
+        for (int i = 0; i < graph.length; i++) {
+            for (int j = 0; j < graph[i].length; j++) {
+                int v = graph[i][j];
+                int[] transposeAdjacency = graphTranspose[v];
+                boolean edgePresent = false;
+                for (int k = 0; k < transposeAdjacency.length; k++) {
+                    if(transposeAdjacency[k] == i) edgePresent = true;
+                }
+                if (!edgePresent)   System.out.println("Hey there is false");
+                step++;
+            }
+        }
+        System.out.println(step);
+    }
     private void doGraphOperations() {
         System.out.println("Starting rr");
         long startTime = System.currentTimeMillis();
-        int theta = 1200000000;
+        int theta = 10000000;
         int rrSets[][] = new int[theta][];
+        int totalWidth = 0;
+        int totalSize = 0;
+        int numberOfRRSetsGreaterThanOne = 0;
         for (int i = 0; i < theta; i++) {
 
             int random = ThreadLocalRandom.current().nextInt(0, this.n);
-            List<Integer> outbound =  (List<Integer>)this.graph[random];
             rrSets[i] = new int[0];
             Set<Integer> visited = new HashSet<>();
             Queue<Integer> queue = new LinkedList<>();
             queue.add(random);
-            int width = 0;
             while(!queue.isEmpty()) {
-                List<Integer> incomingVertices = (List<Integer>)this.graphTranspose[queue.remove()];
+                int vertex = queue.remove();
+                if(visited.contains(vertex)) continue;
+                visited.add(vertex);
+                int[] incomingVertices = this.graphTranspose[vertex];
                 for (int incoming:
                      incomingVertices) {
                     if (visited.contains(incoming)) continue;
                     float p = ThreadLocalRandom.current().nextFloat();
-                    if(p>0.01f) continue;
+                    float propogationProbability = Float.valueOf(1)/Float.valueOf(this.inDegree[vertex]);
+                    if(p>propogationProbability) continue;
                     queue.add(incoming);
-                    width++;
-                    int[] existingRRSet = rrSets[i];
-                    int[] newRRSet = Arrays.copyOf(existingRRSet, existingRRSet.length+1);
-                    newRRSet[existingRRSet.length] = incoming;
                 }
             }
-//            int j =0;
-//            for (Integer v :
-//                    outbound) {
-//                rrSets[i][j++] = v;
-//            }
+            int[] rrSet = new int[visited.size()];
+            int j =0;
+            int width = 0;
+            for(int v: visited) {
+                rrSet[j++] = v;
+                width+=this.inDegree[v];
+
+            }
+            rrSets[i] = rrSet;
+            totalWidth+=width;
+            totalSize += rrSets[i].length;
             if(i%1000000==0) {
                 System.out.println("Number of RR sets: " + i);
             }
         }
         long endTime = System.currentTimeMillis();
         System.out.println("Time taken " + (endTime - startTime));
+        System.out.println("Total width is  " + totalWidth);
+        System.out.println("Average width is " + Float.valueOf(totalWidth)/Float.valueOf(theta));
+        System.out.println("Total size of RR sets is " + totalSize);
+        System.out.println("Average size of RR sets is " + Float.valueOf(totalSize)/Float.valueOf(theta));
 
     }
 
@@ -93,7 +121,7 @@ public class GraphPreprocessor {
 
             writer.write(String.format("%d %d\n", this.n, this.m));
             for (int i = 0; i < this.graph.length; i++) {
-                List<Integer> edges = (List<Integer>)this.graph[i];
+                int[] edges = this.graph[i];
                 for (int v :
                         edges) {
                     writer.write(i + " " + v +"\n");
@@ -110,6 +138,7 @@ public class GraphPreprocessor {
         HashMap<Integer, Integer> vertexIdMap = new HashMap<>();
         int i =0;
         BufferedReader bufferedReader = null;
+        int maxIndegree = 0;
         try {
             InputStream in = new FileInputStream(fileName);
             bufferedReader = new BufferedReader(new InputStreamReader(in));
@@ -121,7 +150,7 @@ public class GraphPreprocessor {
                 int nodeTo = Integer.parseInt(inputLine[1]);
 
 
-                //Get the ID fromm the Map
+//                Get the ID from the Map
                 if(!vertexIdMap.containsKey(nodeFrom)) {
                     vertexIdMap.put(nodeFrom, i);
                     i++;
@@ -139,7 +168,7 @@ public class GraphPreprocessor {
                     addEdge(this.graph, nodeFrom, nodeTo);
 
                     this.inDegree[nodeTo] = this.inDegree[nodeTo] + 1;
-
+                    if(this.inDegree[nodeTo] > maxIndegree) maxIndegree = this.inDegree[nodeTo];
                     addEdge(this.graphTranspose, nodeTo, nodeFrom);
                 }
             }
@@ -149,6 +178,7 @@ public class GraphPreprocessor {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println("Max in degree is " + maxIndegree);
     }
 
     public void getVerticesAndEdges(String filePath) {
@@ -181,25 +211,27 @@ public class GraphPreprocessor {
     }
 
     private void initializeGraphStructure(int n, int m) {
-        this.graph = new Object[n];
-        this.graphTranspose = new Object[n];
+        this.graph = new int[n][];
+        this.graphTranspose = new int[n][];
         this.inDegree = new int[n];
         this.n = n;
         this.m = m;
     }
 
-    private void addEdge(Object[] graph, int u, int v) {
-        List<Integer> neighboursU = (List<Integer>)graph[u];
+    private void addEdge(int[][] graph, int u, int v) {
+        int[] neighboursU = graph[u];
         if(neighboursU==null) {
-            neighboursU = new ArrayList<>();
+            neighboursU = new int[0];
             graph[u] = neighboursU;
         }
-        List<Integer> neighboursV = (List<Integer>)graph[v];
+        int[] neighboursV = graph[v];
         if(neighboursV==null) {
-            neighboursV = new ArrayList<>();
+            neighboursV = new int[0];
             graph[v] = neighboursV;
         }
-        neighboursU.add(v);
+        int[] newNeighbours = Arrays.copyOf(neighboursU, neighboursU.length+1);
+        newNeighbours[neighboursU.length] = v;
+        graph[u] = newNeighbours;
 
     }
 }
