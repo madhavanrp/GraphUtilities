@@ -1,7 +1,6 @@
 package com.graphutilities;
 
 
-import com.sun.xml.internal.bind.v2.model.core.ID;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -58,15 +57,15 @@ public class GraphPreprocessor {
         System.out.println(step);
     }
     private void doGraphOperations() {
-        System.out.println("Starting rr");
         long startTime = System.currentTimeMillis();
-        int theta = 10000000;
+        int theta = 20000000;
         int rrSets[][] = new int[theta][];
         int totalWidth = 0;
         int totalSize = 0;
+        int width = 0;
         int numberOfRRSetsGreaterThanOne = 0;
         for (int i = 0; i < theta; i++) {
-
+            width = 0;
             int random = ThreadLocalRandom.current().nextInt(0, this.n);
             rrSets[i] = new int[0];
             Set<Integer> visited = new HashSet<>();
@@ -79,6 +78,7 @@ public class GraphPreprocessor {
                 int[] incomingVertices = this.graphTranspose[vertex];
                 for (int incoming:
                      incomingVertices) {
+                    width++;
                     if (visited.contains(incoming)) continue;
                     float p = ThreadLocalRandom.current().nextFloat();
                     float propogationProbability = Float.valueOf(1)/Float.valueOf(this.inDegree[vertex]);
@@ -88,11 +88,8 @@ public class GraphPreprocessor {
             }
             int[] rrSet = new int[visited.size()];
             int j =0;
-            int width = 0;
             for(int v: visited) {
                 rrSet[j++] = v;
-                width+=this.inDegree[v];
-
             }
             rrSets[i] = rrSet;
             totalWidth+=width;
@@ -103,6 +100,7 @@ public class GraphPreprocessor {
         }
         long endTime = System.currentTimeMillis();
         System.out.println("Time taken " + (endTime - startTime));
+        System.out.println("Time taken per RR set" + (endTime - startTime) * 1.0/theta);
         System.out.println("Total width is  " + totalWidth);
         System.out.println("Average width is " + Float.valueOf(totalWidth)/Float.valueOf(theta));
         System.out.println("Total size of RR sets is " + totalSize);
