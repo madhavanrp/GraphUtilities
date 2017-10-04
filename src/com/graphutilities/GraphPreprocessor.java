@@ -35,8 +35,8 @@ public class GraphPreprocessor {
         String outputPath = String.format(baseProjectPath + File.separator + OUTPUT_PATH);
 //        assertTransposeIsCorrect(this.graph, this.graphTranspose);
 
-//        writeToFile(outputPath, fileName);
-        doGraphOperations();
+        writeToFile(outputPath, fileName);
+//        doGraphOperations();
 
     }
 
@@ -58,7 +58,7 @@ public class GraphPreprocessor {
     }
     private void doGraphOperations() {
         long startTime = System.currentTimeMillis();
-        int theta = 20000000;
+        int theta = 25000000;
         int rrSets[][] = new int[theta][];
         int totalWidth = 0;
         int totalSize = 0;
@@ -120,6 +120,7 @@ public class GraphPreprocessor {
             writer.write(String.format("%d %d\n", this.n, this.m));
             for (int i = 0; i < this.graph.length; i++) {
                 int[] edges = this.graph[i];
+                if(edges==null) continue;
                 for (int v :
                         edges) {
                     writer.write(i + " " + v +"\n");
@@ -146,7 +147,9 @@ public class GraphPreprocessor {
                 String[] inputLine = sCurrentLine.split("\\s", 3);
                 int nodeFrom = Integer.parseInt(inputLine[0]);
                 int nodeTo = Integer.parseInt(inputLine[1]);
-
+                if(nodeFrom==nodeTo) {
+                    System.out.println("There exists a self edge from " + nodeFrom + " to " + nodeTo);
+                }
 
 //                Get the ID from the Map
                 if(!vertexIdMap.containsKey(nodeFrom)) {
