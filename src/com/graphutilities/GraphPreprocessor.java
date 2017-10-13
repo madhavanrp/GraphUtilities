@@ -138,6 +138,7 @@ public class GraphPreprocessor {
         int i =0;
         BufferedReader bufferedReader = null;
         int maxIndegree = 0;
+        int maxDegree = Integer.MIN_VALUE;
         try {
             InputStream in = new FileInputStream(fileName);
             bufferedReader = new BufferedReader(new InputStreamReader(in));
@@ -149,6 +150,7 @@ public class GraphPreprocessor {
                 int nodeTo = Integer.parseInt(inputLine[1]);
                 if(nodeFrom==nodeTo) {
                     System.out.println("There exists a self edge from " + nodeFrom + " to " + nodeTo);
+                    continue;
                 }
 
 //                Get the ID from the Map
@@ -167,10 +169,13 @@ public class GraphPreprocessor {
 
                 if (nodeFrom != nodeTo) {
                     addEdge(this.graph, nodeFrom, nodeTo);
+                    addEdge(this.graph, nodeTo, nodeFrom);
 
                     this.inDegree[nodeTo] = this.inDegree[nodeTo] + 1;
                     if(this.inDegree[nodeTo] > maxIndegree) maxIndegree = this.inDegree[nodeTo];
                     addEdge(this.graphTranspose, nodeTo, nodeFrom);
+                    if(this.graph[nodeFrom].length>maxDegree) maxDegree = this.graph[nodeFrom].length;
+                    if(this.graph[nodeTo].length>maxDegree) maxDegree = this.graph[nodeTo].length;
                 }
             }
             bufferedReader.close();
@@ -180,6 +185,7 @@ public class GraphPreprocessor {
             e.printStackTrace();
         }
         System.out.println("Max in degree is " + maxIndegree);
+        System.out.println(" Max degree is " + maxDegree);
     }
 
     public void getVerticesAndEdges(String filePath) {
@@ -194,6 +200,7 @@ public class GraphPreprocessor {
                 String[] inputLine = sCurrentLine.split("\\s", 3);
                 int nodeFrom = Integer.parseInt(inputLine[0]);
                 int nodeTo = Integer.parseInt(inputLine[1]);
+                if(nodeFrom==nodeTo) continue;
                 vertices.add(nodeFrom);
                 vertices.add(nodeTo);
                 m++;
